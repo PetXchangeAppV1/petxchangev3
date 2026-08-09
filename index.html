@@ -284,6 +284,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
 /* MODALS */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-end}
+/* The cropper opens on top of another sheet (Edit profile, Add pet…), so it
+   needs to outrank them. Without this it renders behind whichever modal
+   appears later in the document and the photo picker looks broken. */
+#m-crop{z-index:400}
+#m-crop .modal-sheet{max-height:92vh}
 .modal-bg.open{display:flex}
 .modal-sheet{background:var(--card);border-radius:22px 22px 0 0;padding:0 20px 32px;width:100%;max-height:82dvh;overflow-y:auto}
 .mhandle{width:36px;height:4px;background:var(--bd);border-radius:2px;margin:12px auto 18px}
@@ -327,6 +332,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .conn-a{width:44px;height:44px;border-radius:50%;background:var(--coral-l);color:var(--coral-m);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer}
 .conn-a img{width:100%;height:100%;object-fit:cover}
 .stat-box{cursor:pointer}
+
+.auth-back{position:absolute;top:16px;left:16px;width:38px;height:38px;border-radius:50%;background:var(--gray-l);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text)}
+.auth-back i{font-size:19px}
+#s-auth{position:relative;justify-content:center;padding:24px}
 
 /* ===== SERVICE BADGES (added) ===== */
 .open-badge{background:var(--teal-l);color:var(--teal-d);font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px}
@@ -618,9 +627,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 <!-- Auth screen -->
 <div id="s-auth" class="screen" style="display:none;flex-direction:column;">
   <div style="width:100%;max-width:380px;margin:0 auto;">
+    <button class="auth-back" onclick="authBack()"><i class="ti ti-arrow-left"></i></button>
     <div class="auth-logo"><i class="ti ti-planet"></i></div>
     <div class="auth-title">PetXchange</div>
-    <div class="auth-sub">All Pets. All Needs. One Exchange.<br>Join India's pet community.</div>
+    <div class="auth-sub" id="auth-sub">All Pets. All Needs. One Exchange.<br>Join India's pet community.</div>
 
     <div class="auth-tabs">
       <button class="auth-tab on" id="tab-login" onclick="authSwitch('login')">Sign in</button>
@@ -646,13 +656,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 
     <!-- Signup form -->
     <div id="form-signup" style="display:none;">
-      <div class="fgrp"><label class="flbl">Full name</label>
-        <input class="finp" type="text" id="s-name" placeholder="Your name" autocomplete="name">
+      <div class="fgrp"><label class="flbl">Full name *</label>
+        <input class="finp" type="text" id="s-name" placeholder="Your name" autocomplete="name" oninput="suggestUserHandle()">
       </div>
-      <div class="fgrp"><label class="flbl">Email</label>
+      <div class="fgrp"><label class="flbl">Choose your user ID *</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:15px;font-weight:700;color:var(--t3);">@</span>
+          <input class="finp" type="text" id="s-handle" placeholder="yourname" style="flex:1;" autocomplete="off"
+                 oninput="checkHandle('s-handle','profiles','s-handle-msg')">
+        </div>
+        <div class="pf-hint" id="s-handle-msg">This is how people find and tag you. You can change it later.</div>
+      </div>
+      <div class="fgrp"><label class="flbl">Email *</label>
         <input class="finp" type="email" id="s-email" placeholder="you@email.com" autocomplete="email">
       </div>
-      <div class="fgrp"><label class="flbl">Password</label>
+      <div class="fgrp"><label class="flbl">Password *</label>
         <input class="finp" type="password" id="s-pass" placeholder="Min 8 characters" autocomplete="new-password">
       </div>
       <div class="fgrp"><label class="flbl">City</label>
@@ -664,6 +682,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
           <option value="provider">Service provider</option>
           <option value="community">Community member</option>
         </select>
+        <div class="pf-hint">Chosen on the previous step — change it here if you like.</div>
       </div>
       <button class="sbtn" id="btn-signup" onclick="doSignup()">Create account</button>
     </div>
@@ -696,8 +715,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
       <span><i class="ti ti-bird" style="font-size:13px;vertical-align:-2px;"></i> Birds</span>
       <span style="color:var(--t3);">& all species</span>
     </div>
-    <button class="sp-btn" onclick="showScreen('s-role')">Get started</button><br>
-    <button class="sp-login" onclick="loginDemo()">Already have an account</button>
+    <button class="sp-btn" onclick="startSignup()">Create account</button><br>
+    <button class="sp-login" onclick="startLogin()">I already have an account</button>
   </div>
 </div>
 
@@ -705,7 +724,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 <div id="s-role" class="screen" style="display:none;flex-direction:column;">
   <div style="padding:48px 24px 24px;flex:1;">
     <div class="role-title">Who are you?</div>
-    <div class="role-sub">Pick your role — you can always switch later.</div>
+    <div class="role-sub">Step 1 of 2 — pick your role. You can switch later.</div>
     <div class="role-card" id="role-owner" onclick="selectRole('owner')">
       <div class="role-icon" style="background:var(--coral-l);"><i class="ti ti-heart" style="color:var(--coral);"></i></div>
       <div><div class="role-lbl">Pet parent</div><div class="role-desc">Follow pets, find mates, book services, community</div></div>
@@ -718,7 +737,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
       <div class="role-icon" style="background:var(--purple-l);"><i class="ti ti-users" style="color:var(--purple);"></i></div>
       <div><div class="role-lbl">Community member</div><div class="role-desc">Adopt, volunteer, explore, dog-walk</div></div>
     </div>
-    <button class="role-next" onclick="goToMain()">Continue</button>
+    <button class="role-next" onclick="roleContinue()">Continue</button>
+    <button class="cbtn" style="margin-top:10px;" onclick="startLogin()">I already have an account</button>
   </div>
 </div>
 
@@ -2225,6 +2245,46 @@ function hideLoading() {
 // ============================================================
 // AUTH FUNCTIONS
 // ============================================================
+// Splash → straight to the sign-in form. No role questions; you already
+// answered those when you signed up.
+function startLogin() {
+  authIntent = 'login';
+  showScreen('s-auth');
+  authSwitch('login');
+}
+
+// Splash → pick a role first, then fill in the details. Asking "who are
+// you?" before a form is the part people can actually answer.
+function startSignup() {
+  authIntent = 'signup';
+  showScreen('s-role');
+}
+
+// Role screen → carry the choice into the signup form.
+function roleContinue() {
+  const sel = document.getElementById('signup-role');
+  if (sel && selRole) sel.value = (selRole === 'other' ? 'community' : selRole);
+  authIntent = 'signup';
+  showScreen('s-auth');
+  authSwitch('signup');
+  setTimeout(() => document.getElementById('s-name')?.focus(), 200);
+}
+
+function authBack() {
+  if (authIntent === 'signup') showScreen('s-role');
+  else showScreen('s-splash');
+}
+
+let authIntent = 'login';
+
+function suggestUserHandle() {
+  const nameEl = document.getElementById('s-name');
+  const hEl = document.getElementById('s-handle');
+  if (!nameEl || !hEl || hEl.dataset.touched === '1') return;
+  hEl.value = slugifyHandle(nameEl.value);
+  if (hEl.value.length >= 3) checkHandle('s-handle', 'profiles', 's-handle-msg');
+}
+
 function authSwitch(mode) {
   document.getElementById('form-login').style.display = 'none';
   document.getElementById('form-signup').style.display = 'none';
@@ -2233,14 +2293,20 @@ function authSwitch(mode) {
   document.getElementById('auth-ok').classList.remove('show');
   document.getElementById('tab-login').classList.remove('on');
   document.getElementById('tab-signup').classList.remove('on');
+  const sub = document.getElementById('auth-sub');
   if (mode === 'login') {
     document.getElementById('form-login').style.display = 'block';
     document.getElementById('tab-login').classList.add('on');
+    authIntent = 'login';
+    if (sub) sub.innerHTML = 'Welcome back.<br>Sign in with your email or @id.';
   } else if (mode === 'signup') {
     document.getElementById('form-signup').style.display = 'block';
     document.getElementById('tab-signup').classList.add('on');
+    authIntent = 'signup';
+    if (sub) sub.innerHTML = 'Step 2 of 2 — your details.<br>Takes about a minute.';
   } else if (mode === 'reset') {
     document.getElementById('form-reset').style.display = 'block';
+    if (sub) sub.innerHTML = 'Reset your password.';
   }
 }
 
@@ -2261,32 +2327,76 @@ function setAuthLoading(btnId, loading) {
 }
 
 async function doSignup() {
-  const name = document.getElementById('s-name').value.trim();
+  const name  = document.getElementById('s-name').value.trim();
   const email = document.getElementById('s-email').value.trim();
-  const pass = document.getElementById('s-pass').value;
-  const city = document.getElementById('s-city').value.trim();
-  const role = document.getElementById('signup-role').value;
+  const pass  = document.getElementById('s-pass').value;
+  const city  = document.getElementById('s-city').value.trim();
+  const role  = document.getElementById('signup-role').value;
   document.getElementById('auth-err').classList.remove('show');
-  if (!name || !email || !pass) { showAuthErr('Please fill in all required fields.'); return; }
+
+  if (!name)  { showAuthErr('Please enter your name.'); return; }
+  if (!email) { showAuthErr('Please enter your email.'); return; }
+  if (!pass)  { showAuthErr('Please choose a password.'); return; }
   if (pass.length < 8) { showAuthErr('Password must be at least 8 characters.'); return; }
+
+  // A user ID is required at signup so tagging and @id login work from day one.
+  let handle;
+  try { handle = readHandle('s-handle'); }
+  catch(err) { showAuthErr(err.message); document.getElementById('s-handle').focus(); return; }
+  if (!handle) {
+    showAuthErr('Please choose a user ID — it is how people tag and find you.');
+    document.getElementById('s-handle').focus();
+    return;
+  }
+
   const btn = document.getElementById('btn-signup');
   btn.disabled = true; btn.textContent = 'Creating account…';
   try {
+    // Last-moment check: someone may have taken the ID while the form was open.
+    const { data: clash } = await sb.from('profiles').select('id').eq('handle', handle).limit(1);
+    if (clash && clash.length) {
+      showAuthErr('@' + handle + ' was just taken. Please pick another.');
+      document.getElementById('s-handle').focus();
+      return;
+    }
+
     const { data, error } = await sb.auth.signUp({
       email, password: pass,
-      options: { data: { full_name: name, city, role } }
+      options: { data: { full_name: name, city, role, handle } }
     });
     if (error) throw error;
-    // Update profile with extra info
+
     if (data.user) {
+      // The signup trigger creates the row; fill in the rest.
       await sb.from('profiles').upsert({
-        id: data.user.id, full_name: name, city, role
+        id: data.user.id, full_name: name, handle, city: city || null, role
       });
     }
-    showAuthOk('Account created! Check your email to confirm, then sign in.');
-    authSwitch('login');
+
+    // With email confirmation off, Supabase returns a session straight away.
+    if (data.session) {
+      currentUser = data.user;
+      await loadProfile();
+      updateHeaderAvatar();
+      showScreen('s-discover');
+      buildCards();
+      loadFeed();
+      showToast('Welcome to PetXchange, @' + handle + '! 🐾');
+    } else {
+      showAuthOk('Account created. Check your email to confirm, then sign in.');
+      authSwitch('login');
+      document.getElementById('l-email').value = email;
+    }
   } catch(e) {
-    showAuthErr(e.message || 'Signup failed. Please try again.');
+    console.log('signup error:', e);
+    const m = (e.message || '').toLowerCase();
+    if (m.includes('already registered') || m.includes('already been registered')) {
+      showAuthErr('That email already has an account. Try signing in instead.');
+    } else if (m.includes('duplicate') || m.includes('unique')) {
+      showAuthErr('That user ID is taken. Please pick another.');
+    } else {
+      showAuthErr(e.message || 'Signup failed. Please try again.');
+    }
   } finally {
     btn.disabled = false; btn.textContent = 'Create account';
   }
@@ -6486,12 +6596,43 @@ function escAttr(str){ return String(str||'').replace(/"/g,'&quot;').replace(/</
 
 async function uploadToBucket(bucket, file, maxMB) {
   if (!currentUser) throw new Error('Sign in first');
-  if (file.size > maxMB * 1024 * 1024) throw new Error(`File is too large (max ${maxMB} MB)`);
-  const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if (!file) throw new Error('No file selected');
+  if (file.size > maxMB * 1024 * 1024) {
+    throw new Error(`That file is ${(file.size / 1048576).toFixed(1)} MB — the limit is ${maxMB} MB`);
+  }
+
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  // The storage policy only allows writes inside your own user-id folder.
   const path = `${currentUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-  const { error } = await sb.storage.from(bucket).upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type });
-  if (error) throw error;
+
+  let res;
+  try {
+    res = await withDeadline(
+      sb.storage.from(bucket).upload(path, file, {
+        cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg'
+      }),
+      30000, 'Upload'
+    );
+  } catch (e) {
+    console.log('[upload] ' + bucket + ' timed out:', e.message);
+    throw new Error('Upload timed out. Check your connection and try again.');
+  }
+
+  if (res.error) {
+    const m = (res.error.message || '').toLowerCase();
+    console.log('[upload] ' + bucket + ' failed:', res.error);
+    if (m.includes('bucket') && m.includes('not found')) {
+      throw new Error('Storage bucket "' + bucket + '" is missing — run the setup SQL.');
+    }
+    if (m.includes('row-level security') || m.includes('unauthorized') || m.includes('policy')) {
+      throw new Error('Upload was blocked by storage permissions — run the setup SQL.');
+    }
+    throw new Error(res.error.message || 'Upload failed');
+  }
+
   const { data } = sb.storage.from(bucket).getPublicUrl(path);
+  if (!data || !data.publicUrl) throw new Error('Upload saved but no public link was returned');
+  console.log('[upload] ' + bucket + ' ok:', data.publicUrl);
   return data.publicUrl;
 }
 
@@ -7228,15 +7369,19 @@ function switchToProvider(){
 }
 function switchToOwner(){showScreen('s-me');showToast('Back to pet parent mode');}
 let selRole='owner';
-function selectRole(r){selRole=r;document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('sel'));document.getElementById('role-'+r)?.classList.add('sel');}
+function selectRole(r){
+  selRole = r;
+  document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('role-'+r)?.classList.add('sel');
+  const sel = document.getElementById('signup-role');
+  if (sel) sel.value = (r === 'other' ? 'community' : r);
+}
+// Kept for any older call site: sends signed-in users to their home screen,
+// and everyone else into the signup flow rather than a dead end.
 function goToMain(){
-  if (!currentUser) { showScreen('s-auth'); return; }
+  if (!currentUser) { startSignup(); return; }
   if(selRole==='provider'){showScreen('s-provider');loadProviderDash();}
   else{showScreen('s-discover');}
-}
-function loginDemo(){
-  if (currentUser) { showScreen('s-discover'); }
-  else { showScreen('s-auth'); }
 }
 function openModal(id){document.getElementById(id).style.display='flex';}
 function closeModal(id){document.getElementById(id).style.display='none';}
