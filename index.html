@@ -149,6 +149,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .post-act{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);cursor:pointer;background:none;border:none}
 .post-act i{font-size:18px}
 .post-act.liked{color:var(--coral)}
+.new-here-badge{display:inline-block;font-size:10px;font-weight:700;color:var(--teal-m);background:var(--teal-l);border-radius:20px;padding:2px 7px;margin-left:4px;vertical-align:middle}
 .vet-badge{background:var(--teal-l);color:var(--teal-m);padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px;margin-top:8px}
 .lost-card{background:var(--red-l);border:1px solid #F09595;border-radius:var(--r);margin:10px 12px 0;padding:14px}
 .adopt-card{background:var(--teal-l);border:1px solid #9FE1CB;border-radius:var(--r);margin:10px 12px 0;padding:14px}
@@ -1723,6 +1724,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
   </div>
 </div>
 
+<!-- Report post -->
+<div class="modal-bg" id="m-report">
+  <div class="modal-sheet"><div class="mhandle"></div>
+    <div class="mtitle">Report post</div>
+    <div class="fgrp"><label class="flbl">Reason</label>
+      <select class="fsel" id="rp-reason">
+        <option value="spam">Spam</option>
+        <option value="harassment_or_bullying">Harassment or bullying</option>
+        <option value="hate_speech">Hate speech</option>
+        <option value="nudity_or_sexual_content">Nudity or sexual content</option>
+        <option value="violence_or_dangerous">Violence or dangerous content</option>
+        <option value="animal_cruelty">Animal cruelty</option>
+        <option value="misinformation">Misinformation</option>
+        <option value="scam_or_fraud">Scam or fraud</option>
+        <option value="intellectual_property">Intellectual property violation</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="fgrp"><label class="flbl">Details (optional)</label><textarea class="finp" id="rp-details" rows="3" placeholder="Anything that helps us review this…" style="resize:none;"></textarea></div>
+    <button class="sbtn" style="background:var(--red);" onclick="submitReport()">Submit report</button>
+    <button class="cbtn" onclick="closeModal('m-report')">Cancel</button>
+  </div>
+</div>
+
 <!-- Comments -->
 <div class="modal-bg" id="m-comments">
   <div class="modal-sheet"><div class="mhandle"></div>
@@ -1827,11 +1852,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 <script>
 // ============================================================
 // PETXCHANGE — Supabase Connected
-// Project: xiskoamttklrnicllkli
+// Project: ayipsfkngpsstuhkyxmb (petxchangev3)
 // ============================================================
-const SUPABASE_URL = 'https://xiskoamttklrnicllkli.supabase.co';
-// ⚠️  PASTE YOUR FULL ANON KEY BELOW (Settings → API Keys → Legacy → anon public)
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhpc2tvYW10dGtscm5pY2xsa2xpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwMzIyOTAsImV4cCI6MjEwMTYwODI5MH0.zreQFRtF8iU8TO_Jq-iSZBi9C93y8eJIEPPKLUunZPI';
+const SUPABASE_URL = 'https://ayipsfkngpsstuhkyxmb.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5aXBzZmtuZ3Bzc3R1aGt5eG1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYxMDAzOTcsImV4cCI6MjEwMTY3NjM5N30.mgL9UwUET0YstwTjonOwDgBq-e8EE4yhMva409vR-8M';
 
 // Init Supabase client — never let a CDN hiccup brick the whole app
 let sb = null;
@@ -2757,8 +2781,8 @@ async function loadFeed() {
 
   // Richest query first; fall back as far as needed so the feed always renders.
   const SELECTS = [
-    'id, author_id, post_type, body, details, media_url, media_type, location_text, is_resolved, likes_count, comments_count, created_at, profiles ( full_name, avatar_url, city, handle ), post_tags ( pet_id, user_id, pets ( id, name, handle ), profiles:user_id ( id, full_name, handle ) )',
-    'id, author_id, post_type, body, details, media_url, media_type, location_text, is_resolved, likes_count, comments_count, created_at, profiles ( full_name, avatar_url, city )',
+    'id, author_id, post_type, body, details, media_url, media_type, location_text, is_resolved, likes_count, comments_count, created_at, profiles ( full_name, avatar_url, city, handle, created_at ), post_tags ( pet_id, user_id, pets ( id, name, handle ), profiles:user_id ( id, full_name, handle ) )',
+    'id, author_id, post_type, body, details, media_url, media_type, location_text, is_resolved, likes_count, comments_count, created_at, profiles ( full_name, avatar_url, city, created_at )',
     'id, author_id, post_type, body, details, media_url, media_type, is_resolved, likes_count, comments_count, created_at',
     'id, author_id, post_type, body, likes_count, created_at',
     '*'
@@ -2776,6 +2800,8 @@ async function loadFeed() {
       renderFeed();
       loadFeedComments(feedPosts.map(p => p.id));
       loadMyLikes(feedPosts.map(p => p.id));
+      loadMyReposts(feedPosts.map(p => p.id));
+      loadMySaves(feedPosts.map(p => p.id));
       if (!feedChannel) {
         feedChannel = sb.channel('posts-feed')
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => loadFeed())
@@ -2832,10 +2858,17 @@ function mediaHtml(post, cls) {
     : `<img src="${escAttr(post.media_url)}" alt="" loading="lazy" onclick="openLightbox('${escAttr(post.media_url)}')">`}</div>`;
 }
 
+function isNewHere(profile) {
+  if (!profile || !profile.created_at) return false;
+  const days = (Date.now() - new Date(profile.created_at).getTime()) / 86400000;
+  return days >= 0 && days <= 14;
+}
+
 function authorLine(post) {
   const pr = post.profiles || {};
   const base = escHtml(pr.full_name || 'PetXchange user');
-  return pr.handle ? base + ' <span class="handle">@' + escHtml(pr.handle) + '</span>' : base + (pr.city ? ' · ' + escHtml(pr.city) : '');
+  const line = pr.handle ? base + ' <span class="handle">@' + escHtml(pr.handle) + '</span>' : base + (pr.city ? ' · ' + escHtml(pr.city) : '');
+  return line + (isNewHere(pr) ? ' <span class="new-here-badge">New here</span>' : '');
 }
 
 function authorAvi(post, bg, fg) {
@@ -2852,9 +2885,14 @@ function postMenuBtn(post) {
 
 function actionRow(post, tone) {
   const c = tone || 'var(--t2)';
+  const reposted = myReposts.has(post.id);
+  const saved = mySaves.has(post.id);
+  const rc = repostCounts[post.id] || 0;
   return `<div class="post-acts" style="margin-top:12px;">
       <button class="post-act${myLikes.has(post.id) ? ' liked' : ''}" style="color:${myLikes.has(post.id) ? 'var(--coral)' : c};" onclick="event.stopPropagation();likePost(this,'${post.id}')"><i class="ti ti-heart${myLikes.has(post.id) ? '-filled' : ''}"></i> ${post.likes_count || 0}</button>
       <button class="post-act" style="color:${c};" onclick="openComments('${post.id}')"><i class="ti ti-message-circle"></i> ${post.comments_count || 0}</button>
+      <button class="post-act" style="color:${reposted ? 'var(--teal-m)' : c};" onclick="event.stopPropagation();toggleRepost('${post.id}')"><i class="ti ti-repeat"></i>${rc ? ' ' + rc : ''}</button>
+      <button class="post-act" style="color:${saved ? 'var(--purple-m)' : c};" onclick="event.stopPropagation();toggleSave('${post.id}')"><i class="ti ti-bookmark${saved ? '-filled' : ''}"></i></button>
       <button class="post-act" style="color:${c};" onclick="sharePost('${post.id}')"><i class="ti ti-share"></i></button>
     </div>`;
 }
@@ -4272,6 +4310,127 @@ async function likePost(btn, postId) {
     else { myLikes.delete(postId); if (post) post.likes_count = Math.max(0, (post.likes_count || 1) - 1); }
     renderFeed();
     showToast('Could not update like');
+  }
+}
+
+// ============================================================
+// REPOSTS — visible to everyone, one per person per post
+// ============================================================
+let myReposts = new Set();
+let repostCounts = {};
+
+async function loadMyReposts(postIds) {
+  if (!postIds || !postIds.length) return;
+  try {
+    const { data, error } = await sb.from('post_reposts').select('post_id, user_id').in('post_id', postIds);
+    if (error) throw error;
+    repostCounts = {};
+    myReposts = new Set();
+    (data || []).forEach(r => {
+      repostCounts[r.post_id] = (repostCounts[r.post_id] || 0) + 1;
+      if (currentUser && r.user_id === currentUser.id) myReposts.add(r.post_id);
+    });
+    renderFeed();
+  } catch(e) { console.log('loadMyReposts:', e); }
+}
+
+async function toggleRepost(postId) {
+  if (!currentUser) { showToast('Sign in to repost'); return; }
+  if (!postId) return;
+  const wasReposted = myReposts.has(postId);
+
+  if (wasReposted) { myReposts.delete(postId); repostCounts[postId] = Math.max(0, (repostCounts[postId] || 1) - 1); }
+  else { myReposts.add(postId); repostCounts[postId] = (repostCounts[postId] || 0) + 1; }
+  renderFeed();
+
+  try {
+    if (wasReposted) {
+      const { error } = await sb.from('post_reposts').delete().match({ post_id: postId, user_id: currentUser.id });
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('post_reposts')
+        .upsert({ post_id: postId, user_id: currentUser.id }, { onConflict: 'post_id,user_id', ignoreDuplicates: true });
+      if (error) throw error;
+      showToast('Reposted to your profile');
+    }
+  } catch(e) {
+    console.log('repost error:', e);
+    if (wasReposted) { myReposts.add(postId); repostCounts[postId] = (repostCounts[postId] || 0) + 1; }
+    else { myReposts.delete(postId); repostCounts[postId] = Math.max(0, (repostCounts[postId] || 1) - 1); }
+    renderFeed();
+    showToast('Could not update repost');
+  }
+}
+
+// ============================================================
+// SAVED POSTS — private, like Instagram saves (RLS: select_own only)
+// ============================================================
+let mySaves = new Set();
+
+async function loadMySaves(postIds) {
+  if (!currentUser || !postIds || !postIds.length) return;
+  try {
+    const { data, error } = await sb.from('saved_posts')
+      .select('post_id').eq('user_id', currentUser.id).in('post_id', postIds);
+    if (error) throw error;
+    mySaves = new Set((data || []).map(r => r.post_id));
+    renderFeed();
+  } catch(e) { console.log('loadMySaves:', e); }
+}
+
+async function toggleSave(postId) {
+  if (!currentUser) { showToast('Sign in to save posts'); return; }
+  if (!postId) return;
+  const wasSaved = mySaves.has(postId);
+  if (wasSaved) mySaves.delete(postId); else mySaves.add(postId);
+  renderFeed();
+
+  try {
+    if (wasSaved) {
+      const { error } = await sb.from('saved_posts').delete().match({ post_id: postId, user_id: currentUser.id });
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('saved_posts')
+        .upsert({ post_id: postId, user_id: currentUser.id }, { onConflict: 'post_id,user_id', ignoreDuplicates: true });
+      if (error) throw error;
+      showToast('Saved');
+    }
+  } catch(e) {
+    console.log('save error:', e);
+    if (wasSaved) mySaves.add(postId); else mySaves.delete(postId);
+    renderFeed();
+    showToast('Could not update saved posts');
+  }
+}
+
+// ============================================================
+// REPORT POST
+// ============================================================
+let reportPostId = null;
+
+function reportPost(postId) {
+  if (!currentUser) { showToast('Sign in to report posts'); return; }
+  reportPostId = postId;
+  document.getElementById('rp-reason').value = 'spam';
+  document.getElementById('rp-details').value = '';
+  openModal('m-report');
+}
+
+async function submitReport() {
+  if (!reportPostId || !currentUser) return;
+  const reason = document.getElementById('rp-reason').value;
+  const details = document.getElementById('rp-details').value.trim();
+  try {
+    const { error } = await sb.from('post_reports')
+      .insert({ post_id: reportPostId, reporter_id: currentUser.id, reason, details: details || null });
+    if (error) throw error;
+    closeModal('m-report');
+    showToast('Report submitted — thanks for helping keep the community safe');
+  } catch(e) {
+    console.log('report error:', e);
+    // unique (post_id, reporter_id) index — a second report on the same post is a duplicate, not a failure
+    if (e && e.code === '23505') { closeModal('m-report'); showToast('You already reported this post'); }
+    else showToast('Could not submit report');
   }
 }
 
@@ -6366,6 +6525,7 @@ function openPostMenu(postId) {
   } else {
     items.push(`<div class="sheet-act" onclick="closeModal('m-post-actions');openUserProfile('${post.author_id}',{back:'s-feed'})"><i class="ti ti-user"></i> View profile</div>`);
     items.push(`<div class="sheet-act" onclick="closeModal('m-post-actions');openChatWith('${post.author_id}')"><i class="ti ti-message-circle"></i> Message author</div>`);
+    items.push(`<div class="sheet-act danger" onclick="closeModal('m-post-actions');reportPost('${postId}')"><i class="ti ti-flag"></i> Report post</div>`);
   }
 
   items.push(`<div class="sheet-act" onclick="closeModal('m-post-actions');openComments('${postId}')"><i class="ti ti-messages"></i> Comments</div>`);
